@@ -20,10 +20,10 @@ for fs in ['vertexPCA_type-static', 'vertexPCA_type-dynamic',
     for i, sub in enumerate(subs):
         dl = DataLoader(sub=sub, log_level=30)
         dl.load_y(target='emotion', data_split='test')
-        dl.load_X(feature_set=fs, standardize=True)
+        dl.load_X(feature_set=fs, standardize=True, reduce_repeats=False)
         X, y = dl.return_Xy()
-        #y.loc[:] = np.random.randint(0, 5, size=y.size)
         nc = compute_nc_classification(X, y, use_repeats_only=True, use_index=False, score_func=tjur_score)
+
         dl.log.warning(f"Ceiling sub-{sub}: {nc.values.round(3)}")
         nc['sub'] = sub
         nc['feature_space'] = fs if isinstance(fs, str) else ''.join(fs)
@@ -53,7 +53,7 @@ for fs in ['vertexPCA_type-static', 'vertexPCA_type-dynamic',
         for i, sub in enumerate(subs):
             dl = DataLoader(sub=sub, log_level=30)
             dl.load_y(target=target, data_split='test')
-            dl.load_X(feature_set=fs, standardize=False)
+            dl.load_X(feature_set=fs, standardize=False, reduce_repeats=False)
             X, y = dl.return_Xy()
             nc_ = compute_nc_regression(X, y, use_repeats_only=True, use_index=False).iloc[0]
             dl.log.warning(f"Ceiling sub-{sub}: {nc_}")

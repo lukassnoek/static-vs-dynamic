@@ -3,11 +3,9 @@ import os.path as op
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
-from sklearn.metrics import r2_score, confusion_matrix
+from sklearn.metrics import r2_score
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold
-from sklearn.ensemble import RandomForestClassifier
-
 
 sys.path.append(op.abspath(op.dirname(op.dirname(__file__))))
 from data_io import DataLoader
@@ -19,16 +17,14 @@ SUBS = [str(s).zfill(2) for s in range(1, 14)]
 FEATURE_SPACES = [
     'vertexPCA_type-static',
     'vertexPCA_type-dynamic',
-    #['vertexPCA_type-dynamic', '#', 'vertexPCA_type-static'],
-    #['vertexPCA_type-static', '#', 'vertexPCA_type-dynamic'],
     ['vertexPCA_type-static', '+', 'vertexPCA_type-dynamic']
 ]
-TARGET = 'arousal'
+TARGET = 'valence'
 EMOTIONS = ['Anger', 'Disgust', 'Fear', 'Happiness', 'Sadness', 'Surprise']
 
 if TARGET in ['valence', 'arousal']:
     classification = False
-    model = Ridge(fit_intercept=True, alpha=500)
+    model = Ridge(fit_intercept=False, alpha=500)
 else:
     classification = True
     model = LogisticRegression(
@@ -39,6 +35,7 @@ else:
 scores = []
 coefs = {}
 y_preds = []
+
 for i, sub in enumerate(SUBS):
     for fs in FEATURE_SPACES:
         n_comps = 50
@@ -54,20 +51,20 @@ for i, sub in enumerate(SUBS):
         dl.load_y(target=TARGET, data_split='train')
         dl.load_X(feature_set=fs, n_comp=n_comps, standardize=True, reduce_repeats=True)
         X_train, y_train = dl.return_Xy()
-        #if TARGET != 'emotion':
-        #    y_train = y_train - y_train.mean()
-        
+        if TARGET != 'emotion':
+            y_train_mean = y_train.mean()
+            y_train = y_train - y_train_mean
+
         dl = DataLoader(sub=sub, log_level=30)
         dl.load_y(target=TARGET, data_split='test')
         dl.load_X(feature_set=fs, n_comp=n_comps, standardize=True, reduce_repeats=False)
         X_test, y_test = dl.return_Xy()
-        #if TARGET != 'emotion':
-        #    y_test = y_test - y_test.mean()
-
+        if TARGET != 'emotion':
+            y_test_mean = y_test.mean()
+            y_test = y_test - y_test_mean
+        
         model.fit(X_train, y_train)
-        #y_test = y_test.sample(frac=1, replace=False)
-        #y_test.index = X_test.index
-
+    
         if classification:
             preds = pd.DataFrame(model.predict_proba(X_test), index=X_test.index, columns=EMOTIONS)
             coefs_ = np.c_[model.intercept_, model.coef_]
@@ -81,12 +78,12 @@ for i, sub in enumerate(SUBS):
             preds = pd.DataFrame(model.predict(X_test), index=X_test.index, columns=['y_pred'])
             N, K = X_test.shape 
             sigma = np.sqrt(np.sum((y_test - preds.to_numpy().squeeze()) ** 2) / (N - K))
-            #coefs_ = np.r_[model.intercept_, sigma, model.coef_][:, None]
-            coefs_ = np.r_[0, sigma, model.coef_][:, None]
-            
+            coefs_ = np.r_[y_train_mean, sigma, model.coef_][:, None]
             coefs_df = pd.DataFrame(coefs_.T, columns=['icept', 'sigma'] + X_train.columns.tolist())
             scores_ = np.array([r2_score(y_test, preds.to_numpy())])
-            preds.loc[:, 'y_true'] = y_test
+            # This is done to make the plots more interpretable (doesn't change score)
+            preds = preds + y_test_mean
+            preds.loc[:, 'y_true'] = y_test + y_test_mean
 
         dl.log.warning(f"sub-{sub} scores: {scores_.round(2)} (fs = {fs_name})")
         scores_df = pd.DataFrame(scores_, columns=['score'])
@@ -110,7 +107,6 @@ root_dir = op.dirname(op.dirname(op.dirname(__file__)))
 f_out = op.join(root_dir, 'results', 'validation', f'target-{TARGET}_scores.tsv')
 scores = pd.concat(scores, axis=0)
 print(scores.groupby('feature_set').mean())
-
 scores.to_csv(f_out, sep='\t')
 
 preds = pd.concat(y_preds, axis=0)

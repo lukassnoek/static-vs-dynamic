@@ -138,11 +138,14 @@ def run_inverted_logreg(X, beta_hat, alpha_hat, standardize=True, draws=10_000, 
             return trace
 
 
-def run_inverted_linreg(X, beta_hat, alpha_hat, sigma_hat, y=[-1, -.75, -.25, 0, 0.25, 0.75, 1],
+def run_inverted_linreg(X, beta_hat, alpha_hat, sigma_hat, y=[-.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6],
                         standardize=True, draws=10_000, return_hdp=True):
     if standardize:
         X = X / X.std(axis=0)
-    
+
+    this_y = np.array(y) - alpha_hat
+    print(f"Actual y: {this_y}")
+
     X_min, X_max = X.min(axis=0), X.max(axis=0)
     P = X.shape[1]
     K = len(y)
@@ -150,8 +153,8 @@ def run_inverted_linreg(X, beta_hat, alpha_hat, sigma_hat, y=[-1, -.75, -.25, 0,
 
         X_ = tt.stack([pm.Uniform(f'X{i}_', lower=X_min[i], upper=X_max[i], shape=K)
                        for i in range(P)], axis=1)
-        mu_ = tt.dot(X_, beta_hat) + alpha_hat
-        y_ = pm.Normal("y_", mu=mu_, sigma=sigma_hat, observed=y)
+        mu_ = tt.dot(X_, beta_hat)
+        y_ = pm.Normal("y_", mu=mu_, sigma=sigma_hat, observed=this_y)
         trace = pm.sample(draws=draws)
         
         X_hdp = np.zeros((K, P))

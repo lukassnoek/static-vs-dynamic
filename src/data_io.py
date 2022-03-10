@@ -154,16 +154,6 @@ class DataLoader:
 
         categorical = True if self.target_name == 'emotion' else False
 
-        if standardize:
-            X = (X - X.mean(axis=0)) / X.std(axis=0)
-
-            if not categorical:
-                self.y = self.y.astype(float)
-                #self.y = self.y - self.y.mean()
-                #self.y = self.y / self.y.std()
-
-            self.y[self.y.isna()] = 0
-        
         if reduce_repeats:
             from noiseceiling.utils import reduce_repeats as red_rep
             try:
@@ -171,6 +161,13 @@ class DataLoader:
             except ValueError:
                 self.log.warning(f"No repeats for {self.sub}!")
 
+        if not categorical:
+            self.y = self.y.astype(float)
+            self.y[self.y.isna()] = 0
+
+        if standardize:
+            X = (X - X.mean(axis=0)) / X.std(axis=0)
+                    
         self.X = X
         self.log.info(f"Shape X: {self.X.shape}.")
 

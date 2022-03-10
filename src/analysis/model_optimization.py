@@ -30,7 +30,7 @@ def run_subjects_parallel(sub, target, feature_spaces, model, cv, n_comp):
         # Load data
         dl = DataLoader(sub=sub, log_level=30)
         dl.load_y(target=target, data_split='train')
-        dl.load_X(feature_set=fs, n_comp=n_comp, standardize=True)
+        dl.load_X(feature_set=fs, n_comp=n_comp, standardize=True, reduce_repeats=True)
         X, y = dl.return_Xy()
         
         preds_, scores_, coefs_, _ = cross_val_predict_and_score(
@@ -77,10 +77,10 @@ if __name__ == '__main__':
     SUBS = [str(s).zfill(2) for s in range(1, 14)]
     FEATURE_SPACES = [
         'vertexPCA_type-static',
-        #'vertexPCA_type-dynamic',
-        #['vertexPCA_type-static', '+', 'vertexPCA_type-dynamic']
+        'vertexPCA_type-dynamic',
+        ['vertexPCA_type-static', '+', 'vertexPCA_type-dynamic']
     ]
-    TARGET = 'emotion'
+    TARGET = 'arousal'
     N_SPLITS = 10
     if TARGET in ['valence', 'arousal']:
         classification = False

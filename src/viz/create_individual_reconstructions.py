@@ -15,7 +15,7 @@ mean_face = v[:, 0, :, :].mean(axis=0)  # for plotting
 tris = np.load('data/tris.npy') - 1  # triangles
 
 for aff in ['valence', 'arousal', 'emotion']:
-    for tpe in ['static', 'dynamic']:
+    for tpe in ['dynamic', 'static']:
         coef = pd.read_csv(f'results/validation/target-{aff}_fs-vertexPCA_type-{tpe}_coefs.tsv', sep='\t', index_col=0)
         v_pca = pd.read_csv(f'data/features/vertexPCA_type-{tpe}.tsv', sep='\t', index_col=0).to_numpy()
 
@@ -31,7 +31,7 @@ for aff in ['valence', 'arousal', 'emotion']:
         else:
             v_ = v[:, 1, :, :]
             
-        for sub in ['average'] + coef['sub'].unique().tolist():
+        for sub in coef['sub'].unique().tolist() + ['average']:
             print(f"Running model: {aff}, {tpe}, sub-{sub}")
             if aff == 'emotion':
                 alpha_hat, beta_hat, Z = get_parameters(sub, coef)
@@ -51,7 +51,7 @@ for aff in ['valence', 'arousal', 'emotion']:
                 row_titles = ['Anger', 'Disgust', 'Fear', 'Happiness', 'Sadness', 'Surprise']
             else:
                 trace, X_hdp = run_inverted_linreg(v_pca, beta_hat, alpha_hat, sigma_hat, return_hdp=True, draws=draws)
-                row_titles = ['-0.75', '-0.50', '-0.25', '0.0', '+0.25', '+0.50', '+0.75']
+                row_titles = ['- 0.6', '- 0.4', '- 0.2', '0.0', '+0.2', '+0.4', '+0.6']
             
             if tpe == 'static':
                 S_emo = ((X_hdp * v_pca.std(axis=0)) @ w_).reshape((X_hdp.shape[0], n_v, 3))
